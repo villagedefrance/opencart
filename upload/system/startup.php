@@ -3,8 +3,8 @@
 error_reporting(E_ALL);
 
 // Check Version
-if (version_compare(phpversion(), '5.3.0', '<') == true) {
-	exit('PHP5.3+ Required');
+if (version_compare(phpversion(), '5.4.0', '<') == true) {
+	exit('PHP5.4+ Required');
 }
 
 if (!ini_get('date.timezone')) {
@@ -37,7 +37,7 @@ if (!isset($_SERVER['HTTP_HOST'])) {
 }
 
 // Check if SSL
-if (isset($_SERVER['HTTPS']) && (($_SERVER['HTTPS'] == 'on') || ($_SERVER['HTTPS'] == '1'))) {
+if ((isset($_SERVER['HTTPS']) && (($_SERVER['HTTPS'] == 'on') || ($_SERVER['HTTPS'] == '1'))) || $_SERVER['SERVER_PORT'] == 443) {
 	$_SERVER['HTTPS'] = true;
 } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || !empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] == 'on') {
 	$_SERVER['HTTPS'] = true;
@@ -47,57 +47,60 @@ if (isset($_SERVER['HTTPS']) && (($_SERVER['HTTPS'] == 'on') || ($_SERVER['HTTPS
 
 // Modification Override
 function modification($filename) {
-	if (!defined('DIR_CATALOG')) {
-		$file = DIR_MODIFICATION . 'catalog_' . str_replace('/', '_', substr($filename, strlen(DIR_APPLICATION)));
+	if (defined('DIR_CATALOG')) {
+		$file = DIR_MODIFICATION . 'admin/' .  substr($filename, strlen(DIR_APPLICATION));
+	} elseif (defined('DIR_OPENCART')) {
+		$file = DIR_MODIFICATION . 'install/' .  substr($filename, strlen(DIR_APPLICATION));
 	} else {
-		$file = DIR_MODIFICATION . 'admin_' .  str_replace('/', '_', substr($filename, strlen(DIR_APPLICATION)));
+		$file = DIR_MODIFICATION . 'catalog/' . substr($filename, strlen(DIR_APPLICATION));
 	}
 
 	if (substr($filename, 0, strlen(DIR_SYSTEM)) == DIR_SYSTEM) {
-		$file = DIR_MODIFICATION . 'system_' . str_replace('/', '_', substr($filename, strlen(DIR_SYSTEM)));
+		$file = DIR_MODIFICATION . 'system/' . substr($filename, strlen(DIR_SYSTEM));
 	}
 
-	if (file_exists($file)) {
+	if (is_file($file)) {
 		return $file;
-	} else {
-		return $filename;
 	}
+
+	return $filename;
 }
 
 // Autoloader
-function autoload($class) {
-	if (substr($class, 0, 10) == 'controller') {
-		$path = '';
-	}
-	
-	if (substr($class, 0, 10) == 'model') {
-		
-	}
-	
-	if (substr($class, 0, 10) == 'library') {
-		
-	}
-		
-	$file = DIR_SYSTEM . 'library/' . strtolower($class) . '.php';
+if (is_file(DIR_SYSTEM . '../../vendor/autoload.php')) {
+	require_once(DIR_SYSTEM . '../../vendor/autoload.php');
+}
 
-	if (file_exists($file)) {
-		include(modification($file));
+function library($class) {
+	$file = DIR_SYSTEM . 'library/' . str_replace('\\', '/', strtolower($class)) . '.php';
+
+	if (is_file($file)) {
+		include_once(modification($file));
+
+		return true;
 	} else {
-		trigger_error('Error: Could not load class ' . $class . '.php!');
+		return false;
 	}
 }
 
-spl_autoload_register('autoload');
+spl_autoload_register('library');
 spl_autoload_extensions('.php');
 
 // Engine
 require_once(modification(DIR_SYSTEM . 'engine/action.php'));
 require_once(modification(DIR_SYSTEM . 'engine/controller.php'));
+require_once(modification(DIR_SYSTEM . 'engine/event.php'));
 require_once(modification(DIR_SYSTEM . 'engine/front.php'));
 require_once(modification(DIR_SYSTEM . 'engine/loader.php'));
 require_once(modification(DIR_SYSTEM . 'engine/model.php'));
 require_once(modification(DIR_SYSTEM . 'engine/registry.php'));
+require_once(modification(DIR_SYSTEM . 'engine/proxy.php'));
 
 // Helper
-require_once(DIR_SYSTEM . 'helper/json.php');
+require_once(DIR_SYSTEM . 'helper/general.php');
 require_once(DIR_SYSTEM . 'helper/utf8.php');
+require_once(DIR_SYSTEM . 'helper/json.php');
+
+function start($application_config) {
+	require_once(DIR_SYSTEM . 'framework.php');	
+}

@@ -9,8 +9,7 @@ class Response {
 	}
 
 	public function redirect($url, $status = 302) {
-		header('Status: ' . $status);
-		header('Location: ' . str_replace(array('&amp;', "\n", "\r"), array('&', '', ''), $url));
+		header('Location: ' . str_replace(array('&amp;', "\n", "\r"), array('&', '', ''), $url), true, $status);
 		exit();
 	}
 
@@ -18,12 +17,12 @@ class Response {
 		$this->level = $level;
 	}
 
-	public function setOutput($output) {
-		$this->output = $output;
-	}
-
 	public function getOutput() {
 		return $this->output;
+	}
+	
+	public function setOutput($output) {
+		$this->output = $output;
 	}
 
 	private function compress($data, $level = 0) {
@@ -35,7 +34,7 @@ class Response {
 			$encoding = 'x-gzip';
 		}
 
-		if (!isset($encoding)) {
+		if (!isset($encoding) || ($level < -1 || $level > 9)) {
 			return $data;
 		}
 
@@ -58,18 +57,12 @@ class Response {
 
 	public function output() {
 		if ($this->output) {
-			if ($this->level) {
-				$output = $this->compress($this->output, $this->level);
-			} else {
-				$output = $this->output;
-			}
-
+			$output = $this->level ? $this->compress($this->output, $this->level) : $this->output;
 			if (!headers_sent()) {
 				foreach ($this->headers as $header) {
 					header($header, true);
 				}
 			}
-
 			echo $output;
 		}
 	}
